@@ -1,0 +1,4 @@
+# Config editor files
+*.rs.bk
+# log files
+**/*.log
