@@ -22,6 +22,36 @@ struct AbiEntry {
 struct AbiInput {
     #[serde(rename = "type")]
     param_type: String,
+    #[serde(default)]
+    components: Option<Vec<AbiInput>>,
+}
+
+fn process_type_with_components(input: &AbiInput) -> String {
+    match input.param_type.as_str() {
+        "tuple[]" => {
+            if let Some(components) = &input.components {
+                let component_types: Vec<String> = components
+                    .iter()
+                    .map(|c| process_type_with_components(c))
+                    .collect();
+                format!("({})[]", component_types.join(","))
+            } else {
+                "tuple[]".to_string()
+            }
+        }
+        "tuple" => {
+            if let Some(components) = &input.components {
+                let component_types: Vec<String> = components
+                    .iter()
+                    .map(|c| process_type_with_components(c))
+                    .collect();
+                format!("({})", component_types.join(","))
+            } else {
+                "tuple".to_string()
+            }
+        }
+        _ => input.param_type.clone()
+    }
 }
 
 /// Special character cases for .csv: comas, quotes or line breaks, enclose between quotes.
@@ -128,7 +158,7 @@ fn main() {
                         .inputs
                         .unwrap_or_default()
                         .into_iter()
-                        .map(|inp| inp.param_type)
+                        .map(|inp| process_type_with_components(&inp))
                         .collect::<Vec<_>>()
                         .join(",");
                     let signature = format!("{}({})", name, input_types);
@@ -146,7 +176,7 @@ fn main() {
                         .inputs
                         .unwrap_or_default()
                         .into_iter()
-                        .map(|inp| inp.param_type)
+                        .map(|inp| process_type_with_components(&inp))
                         .collect::<Vec<_>>()
                         .join(",");
                     let signature = format!("{}({})", name, input_types);
